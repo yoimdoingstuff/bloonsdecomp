@@ -1,0 +1,2 @@
+stop();
+drawnon = true;
