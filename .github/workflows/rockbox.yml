@@ -1,0 +1,76 @@
+name: Experimental Rockbox ARM build
+
+# Native plugin/toolchain integration is deliberately separate from required
+# host CI. A successful build is still not a physical-device validation.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arm:
+    name: Build ${{ matrix.target }} plugin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ipodvideo, ipod6g]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: Rockbox/rockbox
+          ref: 8755e35daa20b2daf6788c01e75a947fd5f60e72
+          path: build/rockbox-upstream
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install ARM C/C++ toolchain and build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential gcc-arm-none-eabi libnewlib-arm-none-eabi perl zip bzip2
+          python -m pip install --disable-pip-version-check -r ports/rockbox/requirements-build.txt
+          arm-none-eabi-gcc --version
+          arm-none-eabi-g++ --version
+      - name: Pack original assets
+        run: python ports/rockbox/pack_assets.py
+      - name: Install plugin source into pinned Rockbox checkout
+        run: python ports/rockbox/install.py --rockbox build/rockbox-upstream
+      - name: Configure and build native plugin
+        env:
+          IPOD_TARGET: ${{ matrix.target }}
+        run: |
+          bash ports/rockbox/ci_build.sh build/rockbox-upstream "build/arm-$IPOD_TARGET" "$IPOD_TARGET" 2>&1 | tee "build/arm-$IPOD_TARGET.log"
+      - name: Stage plugin and matching assets
+        env:
+          IPOD_TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p "out/$IPOD_TARGET/rocks/games" "out/$IPOD_TARGET/rocks/data/games"
+          cp "build/arm-$IPOD_TARGET/apps/plugins/bloons/bloons.rock" "out/$IPOD_TARGET/rocks/games/"
+          cp build/rockbox/bloons.dat "out/$IPOD_TARGET/rocks/data/games/"
+          cp ports/rockbox/README.md LICENSE "out/$IPOD_TARGET/"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: experimental-bloons-${{ matrix.target }}
+          path: out/${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload ARM diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: arm-diagnostics-${{ matrix.target }}
+          path: |
+            build/arm-${{ matrix.target }}.log
+            build/arm-${{ matrix.target }}/apps/plugins/bloons/*.map
+            build/arm-${{ matrix.target }}/Makefile
+          if-no-files-found: ignore
+          retention-days: 14
