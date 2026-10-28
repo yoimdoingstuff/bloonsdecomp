@@ -59,3 +59,10 @@ adapter, bounded-memory core build, asset packer and source installer. See
 [the Rockbox port guide](ports/rockbox/README.md) for controls, build prerequisites,
 verified host checks, and the remaining ARM/hardware work. No `.rock` binary has
 been built or installed on an iPod yet.
+
+GitHub Actions runs Windows and Linux builds/tests on pushes and pull requests,
+packs the original Rockbox assets, and uploads Windows binaries, iPod previews,
+and test reports. The separate **Experimental Rockbox ARM build** workflow can
+be dispatched manually for Video and Classic plugin builds. See the
+[Rockbox guide](ports/rockbox/README.md#github-actions) for artifact contents and
+the distinction between host checks and target/hardware verification.

@@ -144,3 +144,43 @@ layout, plugin size, stack depth, and performance from the target build.
 This is a concrete starting point for an iPod port, with host-tested shared
 gameplay and an unverified native Rockbox host. It is not yet an install-and-play
 release for the physical device.
+
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs on pushes, pull requests, and manual dispatches.
+Its Windows 2022 and Ubuntu 24.04 jobs install Python 3.11/Pillow, regenerate the
+original asset pack **before** CMake configuration, build the desktop/embedded
+targets, and run CTest. No Downloads directory, original SWF, or local runtime
+bundle is required: generated SWF geometry is already committed.
+
+Artifacts are retained for 14 days:
+
+- `bloons-windows-x64`: executable plus its original asset directories.
+- `rockbox-assets-<runner>`: `bloons.dat`, metadata and a 320×240 preview. This
+  asset artifact is not an executable plugin.
+- `checks-<runner>`: JUnit results, CTest logs and Windows render captures.
+
+`.github/workflows/rockbox.yml` is a separate, manually dispatched experimental
+ARM build. Once the workflow is available in GitHub's Actions interface, select
+**Experimental Rockbox ARM build → Run workflow**, choosing this branch. GitHub
+normally requires a dispatchable workflow to be present on the default branch
+before exposing it in that interface; merely creating a local YAML file does
+not execute a remote run.
+
+The ARM jobs check out the pinned Rockbox source, install Ubuntu's bare-metal
+ARM C/C++ compiler and newlib, install this plugin's source, and invoke
+`ci_build.sh` separately for `ipodvideo` and `ipod6g`. A local tool-name shim
+satisfies Rockbox configure's `arm-elf-eabi-*` naming while using the same
+`arm-none-eabi-*` compiler for C and C++. Rockbox selects the target CPU flags;
+the make recipe queries that compiler for the matching libm archive.
+
+Successful jobs upload `experimental-bloons-<target>` with `rocks/games/bloons.rock`
+and `rocks/data/games/bloons.dat`; these paths belong inside `.rockbox` on a
+player using a compatible Rockbox build. Failures upload diagnostics instead of
+an apparently valid binary. The workflow does not flash firmware, publish a
+release, or upload any files to a player.
+
+The hosted ARM integration is still experimental: workflow syntax and local
+host tests can be validated here, but successful ARM linking and hardware
+operation must be confirmed by the remote run and physical testing. Nothing in
+the ordinary host CI job is presented as proof that an iPod binary works.
