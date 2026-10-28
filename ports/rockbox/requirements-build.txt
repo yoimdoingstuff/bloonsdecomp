@@ -1,2 +1,0 @@
-# Build-time tooling only; nothing is installed on the player.
-Pillow==11.3.0
